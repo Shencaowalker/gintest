@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"time"
 )
-
+//得到固定数据长度的随机字符串
 func RandomString(n int) string {
 	var letter = []byte("qwertyuiopasdfghjklzxcvbnmASDFGHJKLQWERTYUIOPZXCVBNM")
 	result := make([]byte, n)
