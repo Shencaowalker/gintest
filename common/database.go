@@ -9,6 +9,7 @@ import (
 
 var DB *gorm.DB
 
+//初始化数据库链接
 func InitDB() *gorm.DB {
 	driverName := "mysql"
 	host := "116.62.114.212"
@@ -28,11 +29,12 @@ func InitDB() *gorm.DB {
 	if err != nil {
 		panic("failed to connect database,err: " + err.Error())
 	}
+	//创建数据库迁移  这里主要是user表 
 	db.AutoMigrate(&model.User{})
 	DB = db
 	return db
 }
-
+//得到数据库链接
 func GetDB() *gorm.DB {
 	return DB
 }

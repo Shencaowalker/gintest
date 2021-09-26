@@ -12,13 +12,16 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+
+//post新建用户
 func Register(c *gin.Context) {
+	//得到数据库链接
 	DB := common.GetDB()
 	//注册参数
 	name := c.PostForm("name")
 	telephone := c.PostForm("telephone")
 	password := c.PostForm("password")
-	//验证数据
+	//验证手机位数
 	if len(telephone) != 11 {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"code": 422,
@@ -26,6 +29,7 @@ func Register(c *gin.Context) {
 		})
 		return
 	}
+	//验证密码不得少于6位
 	if len(password) < 6 {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"code": 422,
@@ -33,10 +37,13 @@ func Register(c *gin.Context) {
 		})
 		return
 	}
+	//缺省name时自动补齐10位
 	if len(name) == 0 {
 		name = util.RandomString(10)
 	}
+	//服务端打印日志
 	log.Println(name, telephone, password)
+	//查询数据库手机号是否被注册
 	if isTelephoneExist(DB, telephone) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"code": 422,
@@ -45,6 +52,7 @@ func Register(c *gin.Context) {
 		return
 	}
 	//创建用户
+	//加密密码
 	hasedPassword,err := bcrypt.GenerateFromPassword([]byte(password),bcrypt.DefaultCost)
 	if err != nil{
 		c.JSON(http.StatusInternalServerError,gin.H{
@@ -58,19 +66,22 @@ func Register(c *gin.Context) {
 		Telephone: telephone,
 		Password:  string(hasedPassword),
 	}
+	//数据写入数据库
 	DB.Create(&newUser)
 	c.JSON(200, gin.H{
 		"code":200,
 		"message": "成功注册",
 	})
 }
-
+//用户登陆
 func Login(c *gin.Context) {
+	//得到数据库链接
 	DB := common.GetDB()
 	//获取参数
 	telephone := c.PostForm("telephone")
 	password := c.PostForm("password")
 	//验证数据
+	//判断手机号格式是否合法	
 	if len(telephone) != 11 {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"code": 422,
@@ -78,6 +89,7 @@ func Login(c *gin.Context) {
 		})
 		return
 	}
+	//判断密码格式是否合法
 	if len(password) < 6 {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"code": 422,
@@ -104,7 +116,15 @@ func Login(c *gin.Context) {
 		return
 	}
 	//发放token
-	token := "1111"
+	token,err:= common.ReleaseToken(user) 
+	if err !=nil{
+		c.JSON(http.StatusInternalServerError,gin.H{
+			"code":500,
+			"msg":"系统异常",
+		})
+		log.Printf("token generate error : %v", err)
+		return 
+	}
 	//发放结果
 	c.JSON(200,gin.H{
 		"code":200,
@@ -112,7 +132,15 @@ func Login(c *gin.Context) {
 		"msg":"登陆成功",
 	})
 }
-
+//得到数据库中的用户数据 返回上下文中的user数据
+func Info(c *gin.Context){
+	user,_ := c.Get("user")
+	c.JSON(http.StatusOK,gin.H{
+		"code":200,
+		"data":gin.H{"user":user},
+	})
+}
+//判断手机号是否已经被注册
 func isTelephoneExist(db *gorm.DB, telephone string) bool {
 	var user model.User
 	db.Where("telephone = ?", telephone).First(&user)
